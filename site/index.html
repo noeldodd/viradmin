@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Management</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Device Management</h1>
+        <button onclick="fetchDevices()">Fetch Devices</button>
+        <div id="device-list"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/devices';
+
+        // Example: Fetch all devices
+        async function fetchDevices() {
+            const token = 'Bearer YOUR_TOKEN_HERE'; // Replace with the actual JWT token
+
+            const response = await fetch(API_URL, {
+                method: 'GET',
+                headers: {
+                    'Authorization': token
+                }
+            });
+            const devices = await response.json();
+            document.getElementById('device-list').innerHTML = JSON.stringify(devices, null, 2);
+        }
+    </script>
+</body>
+</html>

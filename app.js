@@ -1,79 +1,104 @@
 // app.js
-const express = require('express');
-const bodyParser = require('body-parser');
-const { registerUser, authenticateUser, authenticateToken } = require('./auth');
-const db = require('./database');
+import express from 'express';
+//const bodyParser = require('body-parser');
+import { registerUser, authenticateUser, authenticateToken } from './auth.js';
+import { getAllDevices, addDevice, updateDevice, deleteDevice } from './database.ts';
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json()); // was bodyParser json
+
+import cors from 'cors';
+app.use(cors());
+
+// Testing Startup - remove these lines for PROD 
+//console.log(`ACCESS_TOKEN_SECRET : ${process.env.ACCESS_TOKEN_SECRET}`);
+// ^^^ remove ^^^
+
+// Route to register a new user
+app.post('/register', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const newUser = await registerUser(username, password);
+        res.status(201).json({ message: 'User registered successfully', user: newUser });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+// Route to authenticate a user and return a token
+app.post('/api/users/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const { user, token } = await authenticateUser(username, password);
+        res.json({ message: 'Login successful', user, token });
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
 
 // Device CRUD Routes
 
-// 1. Create a new device
-app.post('/api/devices', authenticateToken, (req, res) => {
-    const { profile } = req.body;
-    const userId = req.user.id; // Extract user ID from JWT token
+// Get all devices for the logged-in user
+app.get('/api/devices', authenticateToken, async (req, res) => {
+    const userId = req.user.id;  // Assumes user ID is in the token
+    try {
+        const alldevices = await getAllDevices(userId);
+        res.json(alldevices);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to retrieve devices' });
+    }
+});
 
-    db.run(
-        "INSERT INTO devices (user_id, profile) VALUES (?, ?)",
-        [userId, JSON.stringify(profile)],
-        function (err) {
-            if (err) return res.status(500).send("Error creating device");
-            res.status(201).send({ id: this.lastID, profile });
+// Add a new device
+app.post('/api/devices', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const { displayname, profile } = req.body;
+    const newDevice = { id: Date.now().toString(), userId, displayname, profile };
+
+    try {
+        await addDevice(newDevice);
+        console.log("Device added successfully");
+        res.status(201).json({ message: 'Device added', device: newDevice });
+        
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to add device' });
+    }
+});
+
+// Update an existing device
+app.put('/api/devices/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { displayname, profile } = req.body;
+
+    try {
+        const updated = await updateDevice(id, { displayname, profile });
+        if (updated) {
+            res.json({ message: 'Device updated', device: updated });
+        } else {
+            res.status(404).json({ error: 'Device not found' });
         }
-    );
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update device' });
+    }
 });
 
-// 2. Read all devices for the authenticated user
-app.get('/api/devices', authenticateToken, (req, res) => {
-    const userId = req.user.id;
+// Delete a device
+app.delete('/api/devices/:id', authenticateToken, async (req, res) => {
+    const { id } = req.params;
 
-    db.all("SELECT * FROM devices WHERE user_id = ?", [userId], (err, rows) => {
-        if (err) return res.status(500).send("Error retrieving devices");
-        res.send(rows.map(row => ({ ...row, profile: JSON.parse(row.profile) })));
-    });
-});
-
-// 3. Read a single device by ID
-app.get('/api/devices/:id', authenticateToken, (req, res) => {
-    const deviceId = req.params.id;
-    const userId = req.user.id;
-
-    db.get("SELECT * FROM devices WHERE id = ? AND user_id = ?", [deviceId, userId], (err, row) => {
-        if (err) return res.status(500).send("Error retrieving device");
-        if (!row) return res.status(404).send("Device not found");
-        res.send({ ...row, profile: JSON.parse(row.profile) });
-    });
-});
-
-// 4. Update a device by ID
-app.put('/api/devices/:id', authenticateToken, (req, res) => {
-    const deviceId = req.params.id;
-    const { profile } = req.body;
-    const userId = req.user.id;
-
-    db.run(
-        "UPDATE devices SET profile = ? WHERE id = ? AND user_id = ?",
-        [JSON.stringify(profile), deviceId, userId],
-        function (err) {
-            if (err) return res.status(500).send("Error updating device");
-            if (this.changes === 0) return res.status(404).send("Device not found");
-            res.send({ id: deviceId, profile });
+    try {
+        const deleted = await deleteDevice(id);
+        if (deleted) {
+            res.json({ message: 'Device deleted' });
+        } else {
+            res.status(404).json({ error: 'Device not found' });
         }
-    );
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete device' });
+    }
 });
 
-// 5. Delete a device by ID
-app.delete('/api/devices/:id', authenticateToken, (req, res) => {
-    const deviceId = req.params.id;
-    const userId = req.user.id;
-
-    db.run("DELETE FROM devices WHERE id = ? AND user_id = ?", [deviceId, userId], function (err) {
-        if (err) return res.status(500).send("Error deleting device");
-        if (this.changes === 0) return res.status(404).send("Device not found");
-        res.send({ message: "Device deleted successfully" });
-    });
-});
-
+// Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

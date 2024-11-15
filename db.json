@@ -1,0 +1,27 @@
+{
+  "users": [
+    {
+      "id": "1731630050893",
+      "username": "testuser",
+      "password": "$2a$10$Fo9zVCNJAsmJ8ybKNCrQcOgqTVa.yjiPruxim0CUPr2wxrOSvxqsS"
+    }
+  ],
+  "devices": [
+    {
+      "id": "1731641020214",
+      "userId": "1731630050893",
+      "displayname": "Device 1",
+      "profile": {
+        "city": "YYC"
+      }
+    },
+    {
+      "id": "1731641169846",
+      "userId": "1731630050893",
+      "displayname": "Device 2",
+      "profile": {
+        "city": "LAX"
+      }
+    }
+  ]
+}

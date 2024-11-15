@@ -1,49 +1,49 @@
 // auth.js
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const db = require('./database');
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+//import db from './database.js';
+import { addUser, findUserByUsername } from './database.ts';
 
-const SECRET_KEY = "your_jwt_secret"; // Make this an environment variable in production
+//const SECRET_KEY = "your_jwt_secret"; // Make this an environment variable in production
 
 // Register a new user with hashed password
-function registerUser(username, password, callback) {
-    const saltRounds = 10;
-    bcrypt.hash(password, saltRounds, (err, hash) => {
-        if (err) return callback(err);
+export const registerUser = async (username, password) => {
+    const existingUser = await findUserByUsername(username);
+    console.log("Existing user: " + existingUser);
+    console.log("typeof existingUser: " + typeof(existingUser));
+    if ( typeof(existingUser) !== 'undefined') throw new Error('User already exists');
 
-        db.run("INSERT INTO users (username, password_hash) VALUES (?, ?)", [username, hash], function (err) {
-            if (err) return callback(err);
-            callback(null, { id: this.lastID, username });
-        });
-    });
-}
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = { id: Date.now().toString(), username, password: hashedPassword };
+    addUser(newUser);
+
+    return newUser;
+};
 
 // Authenticate user and generate JWT token
-function authenticateUser(username, password, callback) {
-    db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
-        if (err) return callback(err);
-        if (!user) return callback(new Error("User not found"));
+export const authenticateUser = async (username, password) => {
+    const user = await findUserByUsername(username);
+    if (!user) throw new Error('User not found');
 
-        bcrypt.compare(password, user.password_hash, (err, isMatch) => {
-            if (err) return callback(err);
-            if (!isMatch) return callback(new Error("Invalid password"));
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) throw new Error('Invalid credentials');
 
-            const token = jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: '1h' });
-            callback(null, token);
-        });
-    });
-}
+    const token = jwt.sign({ id: user.id, username: user.username }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+
+    return { user, token };
+};
 
 // Middleware to protect routes
-function authenticateToken(req, res, next) {
-    const token = req.headers['authorization'];
-    if (!token) return res.status(401).send("Access Denied");
-
-    jwt.verify(token, SECRET_KEY, (err, user) => {
+export const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    //console.log(authHeader);
+    const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+    
+    //console.log(token);
+    if (token == null) return res.sendStatus(403); // No token provided
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
         if (err) return res.status(403).send("Invalid Token");
         req.user = user;
         next();
     });
 }
-
-module.exports = { registerUser, authenticateUser, authenticateToken };

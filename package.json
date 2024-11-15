@@ -1,6 +1,7 @@
 {
   "name": "voice2ir",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -10,10 +11,18 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/lowdb": "^1.0.15",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.3",
+    "bootstrap": "^5.3.3",
+    "cors": "^2.8.5",
+    "ejs": "^3.1.10",
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
+    "lowdb": "^7.0.1",
     "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
   }
 }

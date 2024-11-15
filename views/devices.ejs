@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device List</title>
+    <style>
+        .device-item { display: flex; gap: 10px; margin-bottom: 10px; }
+        .device-item button { margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Devices</h1>
+    <div id="device-list">
+        <% devices.forEach(device => { %>
+            <div class="device-item">
+                <span><%= device.name %></span>
+                <button onclick="editDevice('<%= device.id %>')">Edit</button>
+                <button onclick="deleteDevice('<%= device.id %>')">Delete</button>
+            </div>
+        <% }) %>
+    </div>
+
+    <script>
+        function editDevice(deviceId) {
+            window.location.href = `/devices/${deviceId}/edit`;
+        }
+
+        function deleteDevice(deviceId) {
+            if (confirm('Are you sure you want to delete this device?')) {
+                fetch(`/devices/${deviceId}`, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.ok) {
+                            alert('Device deleted');
+                            location.reload();
+                        } else {
+                            alert('Error deleting device');
+                        }
+                    });
+            }
+        }
+    </script>
+</body>
+</html>
